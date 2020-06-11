@@ -11,7 +11,7 @@ object IotDevice {
 
   final case class ReadTemperature(requestId: Long, replyTo: ActorRef[RespondTemperature]) extends Command
 
-  final case class RespondTemperature(requestId: Long, value: Option[Double])
+  final case class RespondTemperature(requestId: Long, deviceId: String, value: Option[Double])
 
   final case class RecordTemperature(requestId: Long, value: Double, replyTo: ActorRef[TemperatureRecorded]) extends Command
 
@@ -28,18 +28,18 @@ class IotDevice(context: ActorContext[IotDevice.Command], groupId: String, devic
 
   var lastTemperatureReading: Option[Double] = None
 
-  context.log.info(s"Device actor ${groupId}-${deviceId} started")
+  context.log.info(s"Device actor $groupId-$deviceId started")
 
   override def onMessage(msg: Command): Behavior[Command] = {
     msg match {
       case RecordTemperature(id, value, replyTo) =>
-        context.log.info(s"Recorded temperature reading ${value} with ${id}")
+        context.log.info(s"Recorded temperature reading $value with $id")
         lastTemperatureReading = Some(value)
         replyTo ! TemperatureRecorded(id)
         this
 
       case ReadTemperature(id, replyTo) =>
-        replyTo ! RespondTemperature(id, lastTemperatureReading)
+        replyTo ! RespondTemperature(id, deviceId, lastTemperatureReading)
         this
 
       case Passivate =>
@@ -49,7 +49,7 @@ class IotDevice(context: ActorContext[IotDevice.Command], groupId: String, devic
 
   override def onSignal: PartialFunction[Signal, Behavior[Command]] = {
     case PostStop =>
-      context.log.info(s"Device actor ${groupId}-${deviceId} stopped")
+      context.log.info(s"Device actor $groupId-$deviceId stopped")
       this
   }
 

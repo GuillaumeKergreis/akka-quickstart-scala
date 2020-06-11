@@ -1,7 +1,12 @@
 package com.example
 
+import java.util.concurrent.TimeUnit
+
 import akka.actor.typed.{ActorRef, Behavior, PostStop, Signal}
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
+import com.example.IotDeviceManager.RequestAllTemperatures
+
+import scala.concurrent.duration.FiniteDuration
 
 object IotDeviceGroup {
   def apply(groupId: String): Behavior[Command] =
@@ -53,6 +58,14 @@ class IotDeviceGroup(context: ActorContext[IotDeviceGroup.Command], groupId: Str
         context.log.info(s"Device actor for $deviceId has been terminated")
         deviceIdToActor -= deviceId
         this
+
+      case RequestAllTemperatures(requestId, gId, replyTo) =>
+        if (gId == groupId) {
+          context.spawnAnonymous(
+            IotDeviceGroupQuery(deviceIdToActor, requestId = requestId, requester = replyTo, FiniteDuration(3, TimeUnit.SECONDS)))
+          this
+        } else
+          Behaviors.unhandled
     }
 
   override def onSignal: PartialFunction[Signal, Behavior[Command]] = {
